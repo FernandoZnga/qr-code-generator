@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QR Code Generator</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #f7f7f7;
+      color: #1f1f1f;
+    }
+
+    main {
+      width: min(480px, calc(100% - 2rem));
+      background: #ffffff;
+      border: 1px solid #e8e8e8;
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+    }
+
+    h1 {
+      margin: 0 0 0.5rem;
+      font-size: 1.5rem;
+      text-align: center;
+    }
+
+    p {
+      margin: 0 0 1rem;
+      text-align: center;
+      color: #555;
+    }
+
+    .field {
+      display: grid;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    input,
+    select,
+    button {
+      width: 100%;
+      padding: 0.75rem;
+      border-radius: 8px;
+      border: 1px solid #d5d5d5;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+
+    button {
+      background: #171717;
+      color: #fff;
+      cursor: pointer;
+      border: 0;
+    }
+
+    button:disabled {
+      background: #777;
+      cursor: not-allowed;
+    }
+
+    #result {
+      margin-top: 1.25rem;
+      display: none;
+      text-align: center;
+    }
+
+    #qrcode {
+      display: inline-grid;
+      place-items: center;
+      background: #fff;
+      padding: 0.75rem;
+      border: 1px solid #ececec;
+      border-radius: 10px;
+      min-height: 150px;
+      min-width: 150px;
+    }
+
+    #message {
+      margin-top: 0.75rem;
+      font-size: 0.9rem;
+      color: #555;
+      min-height: 1.2rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Welcome</h1>
+    <p>Create a QR code from a URL, word, or any text.</p>
+
+    <div class="field">
+      <label for="qr-input">Text or URL</label>
+      <input id="qr-input" type="text" placeholder="https://example.com" />
+    </div>
+
+    <button id="create-btn" type="button">Create QR code</button>
+
+    <section id="result" aria-live="polite">
+      <h2>QR code</h2>
+      <div id="qrcode"></div>
+
+      <div class="field" style="margin-top: 1rem; text-align: left;">
+        <label for="download-format">Download format</label>
+        <select id="download-format">
+          <option value="png">Image (PNG)</option>
+          <option value="pdf">PDF</option>
+        </select>
+      </div>
+
+      <button id="download-btn" type="button" disabled>Download</button>
+      <div id="message"></div>
+    </section>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>
+    const input = document.getElementById('qr-input');
+    const createButton = document.getElementById('create-btn');
+    const downloadButton = document.getElementById('download-btn');
+    const downloadFormat = document.getElementById('download-format');
+    const result = document.getElementById('result');
+    const qrCodeContainer = document.getElementById('qrcode');
+    const message = document.getElementById('message');
+
+    let currentImageData = '';
+
+    function getCanvasDataURL() {
+      const canvas = qrCodeContainer.querySelector('canvas');
+      if (canvas) {
+        return canvas.toDataURL('image/png');
+      }
+
+      const image = qrCodeContainer.querySelector('img');
+      return image ? image.src : '';
+    }
+
+    createButton.addEventListener('click', () => {
+      const value = input.value.trim();
+      message.textContent = '';
+
+      if (!value) {
+        message.textContent = 'Please enter a URL or text first.';
+        downloadButton.disabled = true;
+        return;
+      }
+
+      qrCodeContainer.innerHTML = '';
+      new QRCode(qrCodeContainer, {
+        text: value,
+        width: 256,
+        height: 256,
+      });
+
+      result.style.display = 'block';
+
+      requestAnimationFrame(() => {
+        currentImageData = getCanvasDataURL();
+        downloadButton.disabled = !currentImageData;
+      });
+    });
+
+    downloadButton.addEventListener('click', () => {
+      if (!currentImageData) {
+        message.textContent = 'Create a QR code before downloading.';
+        return;
+      }
+
+      const format = downloadFormat.value;
+      const timestamp = Date.now();
+
+      if (format === 'pdf') {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'pt', format: [300, 340] });
+        doc.setFontSize(14);
+        doc.text('QR code', 20, 24);
+        doc.addImage(currentImageData, 'PNG', 22, 36, 256, 256);
+        doc.save(`qr-code-${timestamp}.pdf`);
+        return;
+      }
+
+      const link = document.createElement('a');
+      link.href = currentImageData;
+      link.download = `qr-code-${timestamp}.png`;
+      link.click();
+    });
+  </script>
+</body>
+</html>
